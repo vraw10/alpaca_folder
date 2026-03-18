@@ -11,6 +11,13 @@ US Stocks MVP — A Spring Boot REST API that proxies order placement, account m
 - **Build**: Maven 3.6+ (no wrapper — use system `mvn`)
 - **Libraries**: Lombok, Jackson, Spring Validation, Spring Actuator
 
+## Environment Setup
+Before running integration tests or the app, load credentials:
+```bash
+source .env
+```
+The `.env` file contains Alpaca API credentials and is gitignored.
+
 ## Build & Run Commands
 ```bash
 mvn clean compile              # Compile
