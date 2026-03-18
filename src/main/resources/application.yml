@@ -1,0 +1,44 @@
+server:
+  port: 8081
+
+spring:
+  application:
+    name: us-stocks-mvp
+  jackson:
+    default-property-inclusion: non_null
+    serialization:
+      write-dates-as-timestamps: false
+    deserialization:
+      fail-on-unknown-properties: false
+
+# Alpaca Broker API Configuration
+# IMPORTANT: Set these via environment variables, never hardcode credentials
+alpaca:
+  broker:
+    base-url: https://broker-api.sandbox.alpaca.markets
+    token-url: https://authx.sandbox.alpaca.markets/v1/oauth2/token
+    client-id: CK6I2QCISTWEKHVI2IMTIBPWSW
+    client-secret: DjZobjUECyumEAMNGHtbFYqLYvuhB96X2BBK73YKo5Qv
+    connect-timeout-ms: 5000
+    read-timeout-ms: 10000
+  market-data:
+    base-url: https://data.sandbox.alpaca.markets
+    api-key-id: ${APCA_API_KEY_ID:CK6I2QCISTWEKHVI2IMTIBPWSW}
+    api-secret-key: ${APCA_API_SECRET_KEY:DjZobjUECyumEAMNGHtbFYqLYvuhB96X2BBK73YKo5Qv}
+    connect-timeout-ms: 5000
+    read-timeout-ms: 10000
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: never
+
+logging:
+  level:
+    com.groww.usstocks: DEBUG
+    org.springframework.web.client: DEBUG
+
