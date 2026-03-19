@@ -283,9 +283,8 @@ const server = http.createServer(async (req, res) => {
     return res.end(JSON.stringify({ status: 'up' }));
   }
 
-  // 404
-  res.writeHead(404, { 'Content-Type': 'application/json' });
-  res.end(JSON.stringify({ error: 'Not found', path: pathname }));
+  // --- Static files (UI) ---
+  serveStatic(pathname, res);
 });
 
 // ---------------------------------------------------------------------------
@@ -294,6 +293,28 @@ const server = http.createServer(async (req, res) => {
 function sendError(res, status, message) {
   res.writeHead(status, { 'Content-Type': 'application/json' });
   res.end(JSON.stringify({ error: message }));
+}
+
+const STATIC_DIR = path.join(__dirname, 'public');
+const MIME_TYPES = { '.html': 'text/html', '.css': 'text/css', '.js': 'application/javascript', '.json': 'application/json', '.png': 'image/png', '.svg': 'image/svg+xml' };
+
+function serveStatic(pathname, res) {
+  let filePath = pathname === '/' ? '/index.html' : pathname;
+  const fullPath = path.join(STATIC_DIR, filePath);
+  // Prevent directory traversal
+  if (!fullPath.startsWith(STATIC_DIR)) {
+    res.writeHead(403);
+    return res.end('Forbidden');
+  }
+  fs.readFile(fullPath, (err, data) => {
+    if (err) {
+      res.writeHead(404, { 'Content-Type': 'application/json' });
+      return res.end(JSON.stringify({ error: 'Not found', path: pathname }));
+    }
+    const ext = path.extname(fullPath);
+    res.writeHead(200, { 'Content-Type': MIME_TYPES[ext] || 'text/plain' });
+    res.end(data);
+  });
 }
 
 function buildQueryString(url, allowedParams) {
