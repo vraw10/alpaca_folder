@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Create Order — US Stocks</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0f1117; color: #e1e4e8; min-height: 100vh; }
+    .container { max-width: 520px; margin: 0 auto; padding: 32px 16px; }
+    h1 { font-size: 22px; font-weight: 600; margin-bottom: 24px; color: #fff; }
+    .form-group { margin-bottom: 16px; }
+    label { display: block; font-size: 13px; font-weight: 500; color: #8b949e; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px; }
+    input, select { width: 100%; padding: 10px 12px; background: #161b22; border: 1px solid #30363d; border-radius: 6px; color: #e1e4e8; font-size: 14px; outline: none; transition: border-color 0.2s; }
+    input:focus, select:focus { border-color: #58a6ff; }
+    input::placeholder { color: #484f58; }
+    .row { display: flex; gap: 12px; }
+    .row .form-group { flex: 1; }
+    .btn { width: 100%; padding: 12px; background: #238636; border: none; border-radius: 6px; color: #fff; font-size: 15px; font-weight: 600; cursor: pointer; transition: background 0.2s; margin-top: 8px; }
+    .btn:hover { background: #2ea043; }
+    .btn:disabled { background: #21262d; color: #484f58; cursor: not-allowed; }
+    .note { font-size: 12px; color: #484f58; margin-top: 4px; }
+    .divider { border: none; border-top: 1px solid #21262d; margin: 20px 0; }
+
+    /* Response panel */
+    #response-panel { margin-top: 24px; display: none; }
+    #response-panel.show { display: block; }
+    .response-header { font-size: 14px; font-weight: 600; margin-bottom: 8px; display: flex; align-items: center; gap: 8px; }
+    .status-badge { padding: 2px 8px; border-radius: 12px; font-size: 12px; font-weight: 600; }
+    .status-success { background: #238636; color: #fff; }
+    .status-error { background: #da3633; color: #fff; }
+    pre { background: #161b22; border: 1px solid #30363d; border-radius: 6px; padding: 12px; font-size: 13px; overflow-x: auto; white-space: pre-wrap; word-break: break-word; color: #c9d1d9; max-height: 360px; overflow-y: auto; }
+
+    /* Conditional fields */
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Create Order</h1>
+
+    <form id="order-form" autocomplete="off">
+      <div class="form-group">
+        <label for="accountId">Account ID</label>
+        <input type="text" id="accountId" placeholder="e.g. xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" required>
+      </div>
+
+      <div class="form-group">
+        <label for="symbol">Symbol</label>
+        <input type="text" id="symbol" placeholder="e.g. AAPL" required>
+      </div>
+
+      <div class="row">
+        <div class="form-group">
+          <label for="side">Side</label>
+          <select id="side">
+            <option value="buy">Buy</option>
+            <option value="sell">Sell</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="type">Order Type</label>
+          <select id="type">
+            <option value="market">Market</option>
+            <option value="limit">Limit</option>
+            <option value="stop">Stop</option>
+            <option value="stop_limit">Stop Limit</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="form-group">
+          <label for="qtyMode">Quantity Mode</label>
+          <select id="qtyMode">
+            <option value="qty">Shares (qty)</option>
+            <option value="notional">Dollars (notional)</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="qtyValue">Amount</label>
+          <input type="text" id="qtyValue" placeholder="e.g. 1" required>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="time_in_force">Time in Force</label>
+        <select id="time_in_force">
+          <option value="day">Day</option>
+          <option value="gtc">GTC</option>
+          <option value="ioc">IOC</option>
+          <option value="fok">FOK</option>
+        </select>
+      </div>
+
+      <div id="limit-price-group" class="form-group hidden">
+        <label for="limit_price">Limit Price</label>
+        <input type="text" id="limit_price" placeholder="e.g. 150.00">
+      </div>
+
+      <div id="stop-price-group" class="form-group hidden">
+        <label for="stop_price">Stop Price</label>
+        <input type="text" id="stop_price" placeholder="e.g. 145.00">
+      </div>
+
+      <hr class="divider">
+
+      <div class="form-group">
+        <label for="extended_hours">Extended Hours</label>
+        <select id="extended_hours">
+          <option value="">No</option>
+          <option value="true">Yes</option>
+        </select>
+        <div class="note">Only valid with Limit + Day</div>
+      </div>
+
+      <div class="form-group">
+        <label for="client_order_id">Client Order ID (optional)</label>
+        <input type="text" id="client_order_id" placeholder="Your idempotency key (max 48 chars)">
+      </div>
+
+      <button type="submit" class="btn" id="submit-btn">Place Order</button>
+    </form>
+
+    <div id="response-panel">
+      <div class="response-header">
+        <span>Response</span>
+        <span id="status-badge" class="status-badge"></span>
+      </div>
+      <pre id="response-body"></pre>
+    </div>
+  </div>
+
+  <script>
+    const typeSelect = document.getElementById('type');
+    const qtyModeSelect = document.getElementById('qtyMode');
+    const limitGroup = document.getElementById('limit-price-group');
+    const stopGroup = document.getElementById('stop-price-group');
+
+    function updateVisibility() {
+      const t = typeSelect.value;
+      limitGroup.classList.toggle('hidden', t !== 'limit' && t !== 'stop_limit');
+      stopGroup.classList.toggle('hidden', t !== 'stop' && t !== 'stop_limit');
+
+      // notional only valid for market orders
+      const notionalOpt = qtyModeSelect.querySelector('option[value="notional"]');
+      if (t !== 'market' && qtyModeSelect.value === 'notional') {
+        qtyModeSelect.value = 'qty';
+      }
+      notionalOpt.disabled = t !== 'market';
+    }
+
+    typeSelect.addEventListener('change', updateVisibility);
+    updateVisibility();
+
+    document.getElementById('order-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const btn = document.getElementById('submit-btn');
+      btn.disabled = true;
+      btn.textContent = 'Placing...';
+
+      const accountId = document.getElementById('accountId').value.trim();
+      const t = typeSelect.value;
+
+      const body = {
+        symbol: document.getElementById('symbol').value.trim().toUpperCase(),
+        side: document.getElementById('side').value,
+        type: t,
+        time_in_force: document.getElementById('time_in_force').value,
+      };
+
+      // qty or notional
+      const qtyMode = qtyModeSelect.value;
+      const qtyVal = document.getElementById('qtyValue').value.trim();
+      body[qtyMode] = qtyVal;
+
+      // conditional prices
+      if (t === 'limit' || t === 'stop_limit') {
+        body.limit_price = document.getElementById('limit_price').value.trim();
+      }
+      if (t === 'stop' || t === 'stop_limit') {
+        body.stop_price = document.getElementById('stop_price').value.trim();
+      }
+
+      // optional fields
+      const extHours = document.getElementById('extended_hours').value;
+      if (extHours === 'true') body.extended_hours = true;
+
+      const clientId = document.getElementById('client_order_id').value.trim();
+      if (clientId) body.client_order_id = clientId;
+
+      const panel = document.getElementById('response-panel');
+      const badge = document.getElementById('status-badge');
+      const responseBody = document.getElementById('response-body');
+
+      try {
+        const res = await fetch('/api/v1/orders', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Account-Id': accountId,
+          },
+          body: JSON.stringify(body),
+        });
+
+        const data = await res.json();
+        panel.classList.add('show');
+
+        if (res.ok) {
+          badge.textContent = data.status || 'OK';
+          badge.className = 'status-badge status-success';
+        } else {
+          badge.textContent = `${res.status} Error`;
+          badge.className = 'status-badge status-error';
+        }
+        responseBody.textContent = JSON.stringify(data, null, 2);
+      } catch (err) {
+        panel.classList.add('show');
+        badge.textContent = 'Error';
+        badge.className = 'status-badge status-error';
+        responseBody.textContent = err.message;
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Place Order';
+      }
+    });
+  </script>
+</body>
+</html>
