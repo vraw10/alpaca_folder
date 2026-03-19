@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Trading Dashboard</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #0f1117;
+      color: #e1e4e8;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 40px 20px;
+    }
+    h1 { font-size: 28px; font-weight: 600; margin-bottom: 8px; color: #fff; }
+    .subtitle { color: #8b949e; font-size: 14px; margin-bottom: 32px; }
+
+    /* Input Section */
+    .input-section {
+      background: #161b22;
+      border: 1px solid #30363d;
+      border-radius: 12px;
+      padding: 24px 32px;
+      max-width: 700px;
+      width: 100%;
+      margin-bottom: 32px;
+      display: flex;
+      gap: 16px;
+      align-items: flex-end;
+      flex-wrap: wrap;
+    }
+    .input-group {
+      flex: 1;
+      min-width: 180px;
+    }
+    .input-group label {
+      display: block;
+      font-size: 12px;
+      color: #8b949e;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 6px;
+    }
+    .input-group input {
+      width: 100%;
+      padding: 10px 14px;
+      background: #0d1117;
+      border: 1px solid #30363d;
+      border-radius: 8px;
+      color: #e1e4e8;
+      font-size: 14px;
+      font-family: 'SF Mono', 'Fira Code', monospace;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    .input-group input:focus { border-color: #58a6ff; }
+    .input-group input::placeholder { color: #484f58; }
+    .fetch-btn {
+      padding: 10px 28px;
+      background: linear-gradient(135deg, #58a6ff, #388bfd);
+      border: none;
+      border-radius: 8px;
+      color: #fff;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.2s;
+      white-space: nowrap;
+    }
+    .fetch-btn:hover { opacity: 0.9; }
+    .fetch-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    /* Status message */
+    .status-msg {
+      max-width: 700px;
+      width: 100%;
+      text-align: center;
+      font-size: 13px;
+      margin-bottom: 16px;
+      min-height: 20px;
+    }
+    .status-msg.error { color: #f85149; }
+    .status-msg.loading { color: #d29922; }
+    .status-msg.success { color: #7ee787; }
+
+    /* Cards */
+    .cards {
+      display: flex;
+      gap: 24px;
+      flex-wrap: wrap;
+      justify-content: center;
+      max-width: 900px;
+      width: 100%;
+      margin-bottom: 48px;
+    }
+    .card {
+      background: #161b22;
+      border: 1px solid #30363d;
+      border-radius: 12px;
+      padding: 28px;
+      flex: 1;
+      min-width: 240px;
+      max-width: 280px;
+      position: relative;
+      overflow: hidden;
+    }
+    .card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 3px;
+    }
+    .card.buying-power::before { background: linear-gradient(90deg, #58a6ff, #388bfd); }
+    .card.blocked::before { background: linear-gradient(90deg, #f0883e, #d29922); }
+    .card.pending::before { background: linear-gradient(90deg, #a371f7, #8957e5); }
+    .card-icon {
+      width: 40px; height: 40px;
+      border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 20px;
+      margin-bottom: 16px;
+    }
+    .buying-power .card-icon { background: rgba(88, 166, 255, 0.15); }
+    .blocked .card-icon { background: rgba(240, 136, 62, 0.15); }
+    .pending .card-icon { background: rgba(163, 113, 247, 0.15); }
+    .card-label {
+      font-size: 13px;
+      color: #8b949e;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 8px;
+    }
+    .card-value {
+      font-size: 32px;
+      font-weight: 700;
+      color: #fff;
+    }
+    .card-value.placeholder { color: #484f58; font-size: 24px; }
+
+    /* Bar Chart */
+    .chart-container {
+      background: #161b22;
+      border: 1px solid #30363d;
+      border-radius: 12px;
+      padding: 32px;
+      max-width: 700px;
+      width: 100%;
+      margin-bottom: 48px;
+    }
+    .chart-title {
+      font-size: 16px;
+      font-weight: 600;
+      margin-bottom: 24px;
+      color: #fff;
+    }
+    .bar-group { margin-bottom: 20px; }
+    .bar-label {
+      font-size: 13px;
+      color: #8b949e;
+      margin-bottom: 6px;
+      display: flex;
+      justify-content: space-between;
+    }
+    .bar-track {
+      height: 32px;
+      background: #0d1117;
+      border-radius: 6px;
+      overflow: hidden;
+    }
+    .bar-fill {
+      height: 100%;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      padding-left: 12px;
+      font-size: 12px;
+      font-weight: 600;
+      color: #fff;
+      transition: width 1s ease;
+      min-width: fit-content;
+    }
+    .bar-fill.bp { background: linear-gradient(90deg, #58a6ff, #388bfd); }
+    .bar-fill.bl { background: linear-gradient(90deg, #f0883e, #d29922); }
+    .bar-fill.pd { background: linear-gradient(90deg, #a371f7, #8957e5); }
+
+    /* Orders Table */
+    .open-orders-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 16px;
+      font-size: 13px;
+    }
+    .open-orders-table th {
+      text-align: left;
+      color: #8b949e;
+      font-weight: 500;
+      padding: 8px 12px;
+      border-bottom: 1px solid #30363d;
+    }
+    .open-orders-table td {
+      padding: 8px 12px;
+      border-bottom: 1px solid #21262d;
+    }
+    .status-badge {
+      display: inline-block;
+      font-size: 11px;
+      padding: 2px 8px;
+      border-radius: 10px;
+      background: rgba(210, 153, 34, 0.15);
+      color: #d29922;
+      font-weight: 600;
+    }
+    .no-data {
+      text-align: center;
+      color: #484f58;
+      padding: 24px;
+      font-size: 14px;
+    }
+
+    /* API Reference */
+    .api-ref {
+      background: #161b22;
+      border: 1px solid #30363d;
+      border-radius: 12px;
+      padding: 32px;
+      max-width: 700px;
+      width: 100%;
+    }
+    .api-ref h2 {
+      font-size: 16px;
+      font-weight: 600;
+      margin-bottom: 20px;
+    }
+    .api-item {
+      margin-bottom: 24px;
+      padding-bottom: 24px;
+      border-bottom: 1px solid #21262d;
+    }
+    .api-item:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
+    .api-item h3 { font-size: 14px; font-weight: 600; margin-bottom: 4px; }
+    .method {
+      display: inline-block;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 4px;
+      margin-right: 8px;
+    }
+    .method.get { background: rgba(88, 166, 255, 0.15); color: #58a6ff; }
+    .endpoint {
+      font-family: 'SF Mono', monospace;
+      font-size: 13px;
+      color: #7ee787;
+    }
+    .api-item p {
+      color: #8b949e;
+      font-size: 13px;
+      margin-top: 8px;
+      line-height: 1.6;
+    }
+    .field {
+      font-family: 'SF Mono', monospace;
+      background: #0d1117;
+      padding: 1px 6px;
+      border-radius: 3px;
+      color: #f0883e;
+      font-size: 12px;
+    }
+    code {
+      background: #0d1117;
+      padding: 2px 6px;
+      border-radius: 4px;
+      color: #7ee787;
+      font-size: 12px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Account Funds Overview</h1>
+  <p class="subtitle">Enter an account ID and pending deposit to view fund details</p>
+
+  <!-- Input Section -->
+  <div class="input-section">
+    <div class="input-group">
+      <label>Alpaca Account ID</label>
+      <input type="text" id="accountId" placeholder="e.g. b6308305-88ed-3793-8f53-2b5c426a8ff3">
+    </div>
+    <div class="input-group" style="max-width: 160px;">
+      <label>Pending Deposit ($)</label>
+      <input type="number" id="pendingDeposit" placeholder="0.00" step="0.01" min="0" value="5000">
+    </div>
+    <button class="fetch-btn" id="fetchBtn" onclick="fetchData()">Fetch</button>
+  </div>
+
+  <div class="status-msg" id="statusMsg"></div>
+
+  <!-- Cards -->
+  <div class="cards">
+    <div class="card buying-power">
+      <div class="card-icon">&#x1F4B0;</div>
+      <div class="card-label">Buying Power</div>
+      <div class="card-value placeholder" id="bpValue">--</div>
+    </div>
+    <div class="card blocked">
+      <div class="card-icon">&#x1F512;</div>
+      <div class="card-label">Blocked in Open Orders</div>
+      <div class="card-value placeholder" id="blValue">--</div>
+    </div>
+    <div class="card pending">
+      <div class="card-icon">&#x23F3;</div>
+      <div class="card-label">Pending Deposit</div>
+      <div class="card-value placeholder" id="pdValue">--</div>
+    </div>
+  </div>
+
+  <!-- Bar Chart -->
+  <div class="chart-container" id="chartSection" style="display:none;">
+    <div class="chart-title">Funds Breakdown</div>
+    <div class="bar-group">
+      <div class="bar-label"><span>Buying Power</span><span id="barBpLabel">--</span></div>
+      <div class="bar-track"><div class="bar-fill bp" id="barBp" style="width:0%"></div></div>
+    </div>
+    <div class="bar-group">
+      <div class="bar-label"><span>Blocked in Open Orders</span><span id="barBlLabel">--</span></div>
+      <div class="bar-track"><div class="bar-fill bl" id="barBl" style="width:0%"></div></div>
+    </div>
+    <div class="bar-group">
+      <div class="bar-label"><span>Pending Deposit</span><span id="barPdLabel">--</span></div>
+      <div class="bar-track"><div class="bar-fill pd" id="barPd" style="width:0%"></div></div>
+    </div>
+
+    <!-- Open Orders Table -->
+    <div style="margin-top: 32px;">
+      <div class="chart-title">Open Orders (cash blocked)</div>
+      <table class="open-orders-table" id="ordersTable">
+        <thead>
+          <tr>
+            <th>Symbol</th>
+            <th>Side</th>
+            <th>Qty</th>
+            <th>Limit Price</th>
+            <th>Blocked $</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody id="ordersBody">
+          <tr><td colspan="6" class="no-data">No data yet — enter an account ID and click Fetch</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- API Reference -->
+  <div class="api-ref">
+    <h2>How to Fetch These Values</h2>
+
+    <div class="api-item">
+      <h3>Buying Power</h3>
+      <p>
+        <span class="method get">GET</span>
+        <span class="endpoint">/v1/trading/accounts/{account_id}/account</span>
+      </p>
+      <p>
+        Use the <span class="field">buying_power</span> field from the account response.
+        Other useful fields: <span class="field">cash</span>,
+        <span class="field">cash_withdrawable</span>,
+        <span class="field">equity</span>,
+        <span class="field">portfolio_value</span>.
+      </p>
+    </div>
+
+    <div class="api-item">
+      <h3>Cash Blocked in Open Orders</h3>
+      <p>
+        <span class="method get">GET</span>
+        <span class="endpoint">/v1/trading/accounts/{account_id}/orders?status=open</span>
+      </p>
+      <p>
+        For each <strong>buy</strong> order, compute: <code>(qty - filled_qty) &times; limit_price</code>.<br>
+        For <strong>market</strong> orders (no limit_price), use last trade price as estimate.
+        Sum across all open buy orders to get total blocked cash.
+      </p>
+    </div>
+
+    <div class="api-item">
+      <h3>Pending Deposit</h3>
+      <p>
+        Not available from Alpaca. This value comes from your external database
+        and is entered manually on this dashboard.
+      </p>
+    </div>
+  </div>
+
+  <script>
+    function fmt(n) {
+      return '$' + Number(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    function setStatus(msg, type) {
+      const el = document.getElementById('statusMsg');
+      el.textContent = msg;
+      el.className = 'status-msg ' + type;
+    }
+
+    async function fetchData() {
+      const accountId = document.getElementById('accountId').value.trim();
+      const pendingDeposit = parseFloat(document.getElementById('pendingDeposit').value) || 0;
+
+      if (!accountId) {
+        setStatus('Please enter an Account ID', 'error');
+        return;
+      }
+
+      const btn = document.getElementById('fetchBtn');
+      btn.disabled = true;
+      btn.textContent = 'Fetching...';
+      setStatus('Fetching account data from Alpaca...', 'loading');
+
+      try {
+        const [accountRes, ordersRes] = await Promise.all([
+          fetch('/api/account?accountId=' + encodeURIComponent(accountId)),
+          fetch('/api/orders?accountId=' + encodeURIComponent(accountId))
+        ]);
+
+        if (!accountRes.ok) {
+          const errText = await accountRes.text();
+          throw new Error('Account API error (' + accountRes.status + '): ' + errText);
+        }
+        if (!ordersRes.ok) {
+          const errText = await ordersRes.text();
+          throw new Error('Orders API error (' + ordersRes.status + '): ' + errText);
+        }
+
+        const account = await accountRes.json();
+        const orders = await ordersRes.json();
+
+        const buyingPower = parseFloat(account.buying_power) || 0;
+
+        // Calculate cash blocked: sum of (qty - filled_qty) * limit_price for buy orders
+        let blockedCash = 0;
+        const buyOrders = [];
+        for (const order of orders) {
+          if (order.side === 'buy') {
+            const remainingQty = (parseFloat(order.qty) || 0) - (parseFloat(order.filled_qty) || 0);
+            const price = parseFloat(order.limit_price) || parseFloat(order.stop_price) || 0;
+            const blocked = remainingQty * price;
+            blockedCash += blocked;
+            buyOrders.push({ ...order, _blocked: blocked, _remainingQty: remainingQty });
+          }
+        }
+
+        // Update cards
+        document.getElementById('bpValue').textContent = fmt(buyingPower);
+        document.getElementById('bpValue').classList.remove('placeholder');
+        document.getElementById('blValue').textContent = fmt(blockedCash);
+        document.getElementById('blValue').classList.remove('placeholder');
+        document.getElementById('pdValue').textContent = fmt(pendingDeposit);
+        document.getElementById('pdValue').classList.remove('placeholder');
+
+        // Update bar chart
+        const maxVal = Math.max(buyingPower, blockedCash, pendingDeposit, 1);
+        document.getElementById('chartSection').style.display = 'block';
+
+        document.getElementById('barBpLabel').textContent = fmt(buyingPower);
+        document.getElementById('barBp').style.width = Math.max((buyingPower / maxVal) * 100, 3) + '%';
+        document.getElementById('barBp').textContent = fmt(buyingPower);
+
+        document.getElementById('barBlLabel').textContent = fmt(blockedCash);
+        document.getElementById('barBl').style.width = Math.max((blockedCash / maxVal) * 100, 3) + '%';
+        document.getElementById('barBl').textContent = fmt(blockedCash);
+
+        document.getElementById('barPdLabel').textContent = fmt(pendingDeposit);
+        document.getElementById('barPd').style.width = Math.max((pendingDeposit / maxVal) * 100, 3) + '%';
+        document.getElementById('barPd').textContent = fmt(pendingDeposit);
+
+        // Update orders table
+        const tbody = document.getElementById('ordersBody');
+        if (buyOrders.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="6" class="no-data">No open buy orders</td></tr>';
+        } else {
+          tbody.innerHTML = buyOrders.map(o => `
+            <tr>
+              <td><strong>${o.symbol}</strong></td>
+              <td>${o.side.toUpperCase()}</td>
+              <td>${o._remainingQty}</td>
+              <td>${o.limit_price ? fmt(o.limit_price) : 'MARKET'}</td>
+              <td>${fmt(o._blocked)}</td>
+              <td><span class="status-badge">${o.status.toUpperCase()}</span></td>
+            </tr>
+          `).join('');
+        }
+
+        setStatus('Updated successfully — Account: ' + accountId.substring(0, 8) + '...', 'success');
+
+      } catch (err) {
+        setStatus(err.message, 'error');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Fetch';
+      }
+    }
+
+    // Allow Enter key to trigger fetch
+    document.querySelectorAll('.input-section input').forEach(input => {
+      input.addEventListener('keydown', e => { if (e.key === 'Enter') fetchData(); });
+    });
+  </script>
+</body>
+</html>

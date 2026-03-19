@@ -1,0 +1,9 @@
+server:
+  port: 9090
+
+alpaca:
+  broker:
+    base-url: https://broker-api.sandbox.alpaca.markets
+    token-url: https://authx.sandbox.alpaca.markets/v1/oauth2/token
+    client-id: ${ALPACA_BROKER_CLIENT_ID:CK6I2QCISTWEKHVI2IMTIBPWSW}
+    client-secret: ${ALPACA_BROKER_CLIENT_SECRET:DjZobjUECyumEAMNGHtbFYqLYvuhB96X2BBK73YKo5Qv}
