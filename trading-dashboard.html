@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Trading Dashboard</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #0f1117;
+      color: #e1e4e8;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 40px 20px;
+    }
+    h1 {
+      font-size: 28px;
+      font-weight: 600;
+      margin-bottom: 8px;
+      color: #fff;
+    }
+    .subtitle {
+      color: #8b949e;
+      font-size: 14px;
+      margin-bottom: 40px;
+    }
+    .cards {
+      display: flex;
+      gap: 24px;
+      flex-wrap: wrap;
+      justify-content: center;
+      max-width: 900px;
+      width: 100%;
+      margin-bottom: 48px;
+    }
+    .card {
+      background: #161b22;
+      border: 1px solid #30363d;
+      border-radius: 12px;
+      padding: 28px;
+      flex: 1;
+      min-width: 240px;
+      max-width: 280px;
+      position: relative;
+      overflow: hidden;
+    }
+    .card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 3px;
+    }
+    .card.buying-power::before { background: linear-gradient(90deg, #58a6ff, #388bfd); }
+    .card.blocked::before { background: linear-gradient(90deg, #f0883e, #d29922); }
+    .card.pending::before { background: linear-gradient(90deg, #a371f7, #8957e5); }
+
+    .card-icon {
+      width: 40px;
+      height: 40px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      margin-bottom: 16px;
+    }
+    .buying-power .card-icon { background: rgba(88, 166, 255, 0.15); }
+    .blocked .card-icon { background: rgba(240, 136, 62, 0.15); }
+    .pending .card-icon { background: rgba(163, 113, 247, 0.15); }
+
+    .card-label {
+      font-size: 13px;
+      color: #8b949e;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 8px;
+    }
+    .card-value {
+      font-size: 32px;
+      font-weight: 700;
+      color: #fff;
+      margin-bottom: 8px;
+    }
+    .card-source {
+      font-size: 11px;
+      color: #484f58;
+      font-family: 'SF Mono', monospace;
+      line-height: 1.6;
+    }
+    .card-source code {
+      background: #0d1117;
+      padding: 2px 6px;
+      border-radius: 4px;
+      color: #7ee787;
+    }
+
+    /* Bar Chart */
+    .chart-container {
+      background: #161b22;
+      border: 1px solid #30363d;
+      border-radius: 12px;
+      padding: 32px;
+      max-width: 700px;
+      width: 100%;
+      margin-bottom: 48px;
+    }
+    .chart-title {
+      font-size: 16px;
+      font-weight: 600;
+      margin-bottom: 24px;
+      color: #fff;
+    }
+    .bar-group {
+      margin-bottom: 20px;
+    }
+    .bar-label {
+      font-size: 13px;
+      color: #8b949e;
+      margin-bottom: 6px;
+      display: flex;
+      justify-content: space-between;
+    }
+    .bar-track {
+      height: 32px;
+      background: #0d1117;
+      border-radius: 6px;
+      overflow: hidden;
+      position: relative;
+    }
+    .bar-fill {
+      height: 100%;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      padding-left: 12px;
+      font-size: 12px;
+      font-weight: 600;
+      color: #fff;
+      transition: width 1.5s ease;
+      min-width: fit-content;
+    }
+    .bar-fill.bp { background: linear-gradient(90deg, #58a6ff, #388bfd); }
+    .bar-fill.bl { background: linear-gradient(90deg, #f0883e, #d29922); }
+    .bar-fill.pd { background: linear-gradient(90deg, #a371f7, #8957e5); }
+
+    /* API Reference */
+    .api-ref {
+      background: #161b22;
+      border: 1px solid #30363d;
+      border-radius: 12px;
+      padding: 32px;
+      max-width: 700px;
+      width: 100%;
+    }
+    .api-ref h2 {
+      font-size: 16px;
+      font-weight: 600;
+      margin-bottom: 20px;
+    }
+    .api-item {
+      margin-bottom: 24px;
+      padding-bottom: 24px;
+      border-bottom: 1px solid #21262d;
+    }
+    .api-item:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
+    .api-item h3 {
+      font-size: 14px;
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+    .api-item .method {
+      display: inline-block;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 4px;
+      margin-right: 8px;
+    }
+    .method.get { background: rgba(88, 166, 255, 0.15); color: #58a6ff; }
+    .api-item .endpoint {
+      font-family: 'SF Mono', monospace;
+      font-size: 13px;
+      color: #7ee787;
+    }
+    .api-item p {
+      color: #8b949e;
+      font-size: 13px;
+      margin-top: 8px;
+      line-height: 1.5;
+    }
+    .api-item .field {
+      font-family: 'SF Mono', monospace;
+      background: #0d1117;
+      padding: 1px 6px;
+      border-radius: 3px;
+      color: #f0883e;
+      font-size: 12px;
+    }
+    .open-orders-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 16px;
+      font-size: 13px;
+    }
+    .open-orders-table th {
+      text-align: left;
+      color: #8b949e;
+      font-weight: 500;
+      padding: 8px 12px;
+      border-bottom: 1px solid #30363d;
+    }
+    .open-orders-table td {
+      padding: 8px 12px;
+      border-bottom: 1px solid #21262d;
+    }
+    .status-badge {
+      display: inline-block;
+      font-size: 11px;
+      padding: 2px 8px;
+      border-radius: 10px;
+      background: rgba(210, 153, 34, 0.15);
+      color: #d29922;
+      font-weight: 600;
+    }
+  </style>
+</head>
+<body>
+  <h1>Account Funds Overview</h1>
+  <p class="subtitle">Account: b6308305 &bull; Updated: Mar 19, 2026</p>
+
+  <!-- Cards -->
+  <div class="cards">
+    <div class="card buying-power">
+      <div class="card-icon">💰</div>
+      <div class="card-label">Buying Power</div>
+      <div class="card-value" id="bp-value">$98,029.90</div>
+      <div class="card-source">
+        Source: <code>buying_power</code> from Account API
+      </div>
+    </div>
+    <div class="card blocked">
+      <div class="card-icon">🔒</div>
+      <div class="card-label">Blocked in Open Orders</div>
+      <div class="card-value" id="bl-value">$1.00</div>
+      <div class="card-source">
+        Source: <code>Σ (qty - filled_qty) × limit_price</code> from Orders API
+      </div>
+    </div>
+    <div class="card pending">
+      <div class="card-icon">⏳</div>
+      <div class="card-label">Pending Deposit</div>
+      <div class="card-value" id="pd-value">$5,000.00</div>
+      <div class="card-source">
+        Source: Hardcoded (pushed from external DB)
+      </div>
+    </div>
+  </div>
+
+  <!-- Bar Chart -->
+  <div class="chart-container">
+    <div class="chart-title">Funds Breakdown</div>
+    <div class="bar-group">
+      <div class="bar-label">
+        <span>Buying Power</span>
+        <span>$98,029.90</span>
+      </div>
+      <div class="bar-track">
+        <div class="bar-fill bp" style="width: 95%">$98,029.90</div>
+      </div>
+    </div>
+    <div class="bar-group">
+      <div class="bar-label">
+        <span>Blocked in Open Orders</span>
+        <span>$1.00</span>
+      </div>
+      <div class="bar-track">
+        <div class="bar-fill bl" style="width: 3%">$1.00</div>
+      </div>
+    </div>
+    <div class="bar-group">
+      <div class="bar-label">
+        <span>Pending Deposit</span>
+        <span>$5,000.00</span>
+      </div>
+      <div class="bar-track">
+        <div class="bar-fill pd" style="width: 5%">$5,000.00</div>
+      </div>
+    </div>
+
+    <!-- Open Orders Table -->
+    <div style="margin-top: 32px;">
+      <div class="chart-title">Open Orders (cash blocked)</div>
+      <table class="open-orders-table">
+        <thead>
+          <tr>
+            <th>Symbol</th>
+            <th>Side</th>
+            <th>Qty</th>
+            <th>Limit Price</th>
+            <th>Blocked $</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>TSLA</strong></td>
+            <td>BUY</td>
+            <td>1</td>
+            <td>$1.00</td>
+            <td>$1.00</td>
+            <td><span class="status-badge">ACCEPTED</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- API Reference -->
+  <div class="api-ref">
+    <h2>How to Fetch from Alpaca</h2>
+
+    <div class="api-item">
+      <h3>
+        <span class="method get">GET</span>
+        <span class="endpoint">/v1/trading/accounts/{account_id}/account</span>
+      </h3>
+      <p>
+        Returns the account object. Use the <span class="field">buying_power</span> field directly.<br>
+        Other useful fields: <span class="field">cash</span>,
+        <span class="field">cash_withdrawable</span>,
+        <span class="field">equity</span>,
+        <span class="field">portfolio_value</span>
+      </p>
+    </div>
+
+    <div class="api-item">
+      <h3>
+        <span class="method get">GET</span>
+        <span class="endpoint">/v1/trading/accounts/{account_id}/orders?status=open</span>
+      </h3>
+      <p>
+        Returns all open orders. To calculate <strong>cash blocked</strong>:<br>
+        For each <strong>buy</strong> order, sum <code style="background:#0d1117;padding:2px 6px;border-radius:4px;color:#7ee787;">(qty - filled_qty) × limit_price</code>.<br>
+        For <strong>market</strong> orders (no limit_price), use last trade price or mark price as an estimate.
+      </p>
+    </div>
+
+    <div class="api-item">
+      <h3>Pending Deposit</h3>
+      <p>
+        Not available from Alpaca. This value is pushed from your external DB to the frontend.
+        Currently hardcoded as <strong>$5,000.00</strong> for display purposes.
+      </p>
+    </div>
+  </div>
+</body>
+</html>
