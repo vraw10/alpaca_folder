@@ -5,16 +5,21 @@ const path = require("path");
 
 const PORT = 3001;
 const ALPACA_DATA_URL = "https://data.sandbox.alpaca.markets";
-const ALPACA_KEY = process.env.ALPACA_API_KEY_ID || process.env.APCA_API_KEY_ID || "";
+const ALPACA_KEY =
+  process.env.ALPACA_BROKER_CLIENT_ID || process.env.APCA_API_KEY_ID || "";
 const ALPACA_SECRET =
-  process.env.ALPACA_API_SECRET_KEY || process.env.APCA_API_SECRET_KEY || "";
+  process.env.ALPACA_BROKER_CLIENT_SECRET ||
+  process.env.APCA_API_SECRET_KEY ||
+  "";
 
 function proxyAlpaca(alpacaPath, res) {
   const url = `${ALPACA_DATA_URL}${alpacaPath}`;
+  const basicAuth = Buffer.from(`${ALPACA_KEY}:${ALPACA_SECRET}`).toString(
+    "base64"
+  );
   const options = {
     headers: {
-      "APCA-API-KEY-ID": ALPACA_KEY,
-      "APCA-API-SECRET-KEY": ALPACA_SECRET,
+      Authorization: `Basic ${basicAuth}`,
       Accept: "application/json",
     },
   };
