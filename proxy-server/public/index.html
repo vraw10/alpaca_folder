@@ -206,7 +206,7 @@
     async function fetchBuyingPower(accountId) {
       buyingPowerEl.textContent = '...';
       try {
-        const res = await fetch('/api/v1/account/trading-limits', {
+        const res = await fetch('/api/v1/account', {
           headers: { 'X-Account-Id': accountId },
         });
         if (!res.ok) { buyingPowerEl.textContent = '—'; return; }
