@@ -3,7 +3,7 @@ const https = require("https");
 const fs = require("fs");
 const path = require("path");
 
-const PORT = 3000;
+const PORT = 3001;
 const ALPACA_DATA_URL = "https://data.sandbox.alpaca.markets";
 const ALPACA_KEY = process.env.APCA_API_KEY_ID || "CK6I2QCISTWEKHVI2IMTIBPWSW";
 const ALPACA_SECRET =
