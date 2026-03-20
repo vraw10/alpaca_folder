@@ -5,10 +5,9 @@ const path = require("path");
 
 const PORT = 3001;
 const ALPACA_DATA_URL = "https://data.sandbox.alpaca.markets";
-const ALPACA_KEY = process.env.APCA_API_KEY_ID || "CK6I2QCISTWEKHVI2IMTIBPWSW";
+const ALPACA_KEY = process.env.ALPACA_API_KEY_ID || process.env.APCA_API_KEY_ID || "";
 const ALPACA_SECRET =
-  process.env.APCA_API_SECRET_KEY ||
-  "DjZobjUECyumEAMNGHtbFYqLYvuhB96X2BBK73YKo5Qv";
+  process.env.ALPACA_API_SECRET_KEY || process.env.APCA_API_SECRET_KEY || "";
 
 function proxyAlpaca(alpacaPath, res) {
   const url = `${ALPACA_DATA_URL}${alpacaPath}`;
