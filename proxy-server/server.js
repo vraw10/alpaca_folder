@@ -231,7 +231,7 @@ const server = http.createServer(async (req, res) => {
   // GET /api/v1/account
   if (pathname === '/api/v1/account' && method === 'GET') {
     if (!accountId) return sendError(res, 400, 'X-Account-Id header is required');
-    return alpacaRequest('GET', `/v1/accounts/${accountId}`, null, res);
+    return alpacaRequest('GET', `/v1/trading/accounts/${accountId}/account`, null, res);
   }
 
   // --- Position endpoints ---
