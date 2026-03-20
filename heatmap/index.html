@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>NASDAQ 100 Heat Map</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #0d1117; color: #e6edf3; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+  header { padding: 16px 24px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #21262d; }
+  header h1 { font-size: 20px; font-weight: 600; }
+  header .meta { font-size: 13px; color: #8b949e; }
+  #status { padding: 8px 24px; font-size: 13px; color: #8b949e; }
+  #heatmap { display: flex; flex-wrap: wrap; padding: 8px; gap: 2px; }
+  .tile {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    border-radius: 4px; cursor: default; position: relative; overflow: hidden;
+    transition: transform 0.1s;
+  }
+  .tile:hover { transform: scale(1.05); z-index: 2; outline: 2px solid #e6edf3; }
+  .tile .symbol { font-weight: 700; font-size: 13px; color: #fff; text-shadow: 0 1px 2px rgba(0,0,0,0.6); }
+  .tile .pct { font-size: 11px; color: rgba(255,255,255,0.9); text-shadow: 0 1px 2px rgba(0,0,0,0.6); }
+  .tile .price { font-size: 10px; color: rgba(255,255,255,0.7); text-shadow: 0 1px 2px rgba(0,0,0,0.6); }
+
+  .legend { display: flex; align-items: center; gap: 8px; padding: 12px 24px; font-size: 12px; color: #8b949e; }
+  .legend-bar { width: 200px; height: 12px; border-radius: 3px;
+    background: linear-gradient(to right, #d73a49, #b62324, #6e1a1a, #21262d, #14532d, #16a34a, #22c55e);
+  }
+
+  #error { padding: 24px; text-align: center; color: #f85149; display: none; }
+</style>
+</head>
+<body>
+<header>
+  <h1>NASDAQ 100 Heat Map</h1>
+  <div class="meta" id="timestamp"></div>
+</header>
+<div class="legend">
+  <span>-5%</span>
+  <div class="legend-bar"></div>
+  <span>+5%</span>
+</div>
+<div id="status">Loading snapshots...</div>
+<div id="error"></div>
+<div id="heatmap"></div>
+
+<script>
+// ── NASDAQ 100 constituent symbols (static list) ──────────────────────
+const NASDAQ_100 = [
+  "AAPL","ABNB","ADBE","ADI","ADP","ADSK","AEP","AMAT","AMD","AMGN",
+  "AMZN","ANSS","ARM","ASML","AVGO","AZN","BIIB","BKNG","BKR","CCEP",
+  "CDNS","CDW","CEG","CHTR","CMCSA","COST","CPRT","CRWD","CSCO","CSGP",
+  "CSX","CTAS","CTSH","DASH","DDOG","DLTR","DXCM","EA","EXC","FANG",
+  "FAST","FTNT","GEHC","GFS","GILD","GOOG","GOOGL","HON","IDXX","ILMN",
+  "INTC","INTU","ISRG","KDP","KHC","KLAC","LIN","LRCX","LULU","MAR",
+  "MCHP","MDB","MDLZ","MELI","META","MNST","MRNA","MRVL","MSFT","MU",
+  "NFLX","NVDA","NXPI","ODFL","ON","ORLY","PANW","PAYX","PCAR","PDD",
+  "PEP","PYPL","QCOM","REGN","ROST","SBUX","SMCI","SNPS","SPLK","TEAM",
+  "TMUS","TSLA","TTD","TTWO","TXN","VRSK","VRTX","WBD","WDAY","XEL","ZS"
+];
+
+// ── Fetch snapshots via server proxy ──────────────────────────────────
+async function fetchSnapshots() {
+  // Batch into groups of 50 (API limit safety)
+  const batchSize = 50;
+  const allSnapshots = {};
+
+  for (let i = 0; i < NASDAQ_100.length; i += batchSize) {
+    const batch = NASDAQ_100.slice(i, i + batchSize);
+    const res = await fetch(`/api/snapshots?symbols=${batch.join(",")}`);
+    if (!res.ok) throw new Error(`API returned ${res.status}`);
+    const data = await res.json();
+    Object.assign(allSnapshots, data);
+  }
+  return allSnapshots;
+}
+
+// ── Color helpers ─────────────────────────────────────────────────────
+function changeColor(pct) {
+  // clamp to [-5, 5]
+  const t = Math.max(-5, Math.min(5, pct)) / 5; // -1 to 1
+  if (t >= 0) {
+    const r = Math.round(33 - 33 * t);
+    const g = Math.round(38 + 159 * t);
+    const b = Math.round(45 - 10 * t);
+    return `rgb(${r},${g},${b})`;
+  } else {
+    const s = -t;
+    const r = Math.round(33 + 182 * s);
+    const g = Math.round(38 - 12 * s);
+    const b = Math.round(45 + 28 * s);
+    return `rgb(${r},${g},${b})`;
+  }
+}
+
+// ── Render ─────────────────────────────────────────────────────────────
+function render(snapshots) {
+  const entries = NASDAQ_100.map((sym) => {
+    const snap = snapshots[sym];
+    if (!snap) return null;
+    const daily = snap.dailyBar || snap.daily_bar;
+    const prev = snap.prevDailyBar || snap.prev_daily_bar;
+    const trade = snap.latestTrade || snap.latest_trade;
+    const price = trade ? trade.p || trade.price : daily ? daily.c || daily.close : null;
+    const prevClose = prev ? prev.c || prev.close : null;
+    const changePct = price && prevClose ? ((price - prevClose) / prevClose) * 100 : null;
+    const volume = daily ? daily.v || daily.volume : null;
+    return { symbol: sym, price, changePct, volume };
+  }).filter(Boolean);
+
+  // Sort by absolute change (biggest movers = bigger tiles)
+  entries.sort((a, b) => Math.abs(b.changePct || 0) - Math.abs(a.changePct || 0));
+
+  const container = document.getElementById("heatmap");
+  container.innerHTML = "";
+
+  // Calculate tile sizes: bigger movers get slightly larger tiles
+  const totalArea = container.clientWidth * Math.max(600, window.innerHeight - 160);
+  const baseSize = Math.sqrt(totalArea / entries.length);
+  const minSize = Math.max(60, baseSize * 0.7);
+  const maxSize = baseSize * 1.5;
+
+  entries.forEach((e) => {
+    const absPct = Math.abs(e.changePct || 0);
+    const sizeRatio = Math.min(1, absPct / 5);
+    const size = Math.round(minSize + (maxSize - minSize) * sizeRatio * 0.5);
+
+    const tile = document.createElement("div");
+    tile.className = "tile";
+    tile.style.width = size + "px";
+    tile.style.height = size + "px";
+    tile.style.backgroundColor = changeColor(e.changePct || 0);
+    tile.title = `${e.symbol}\nPrice: $${e.price ? e.price.toFixed(2) : "N/A"}\nChange: ${e.changePct ? e.changePct.toFixed(2) : "N/A"}%`;
+
+    tile.innerHTML = `
+      <span class="symbol">${e.symbol}</span>
+      <span class="pct">${e.changePct != null ? (e.changePct >= 0 ? "+" : "") + e.changePct.toFixed(2) + "%" : "—"}</span>
+      <span class="price">${e.price ? "$" + e.price.toFixed(2) : ""}</span>
+    `;
+    container.appendChild(tile);
+  });
+
+  document.getElementById("status").style.display = "none";
+  document.getElementById("timestamp").textContent =
+    "Updated: " + new Date().toLocaleString();
+}
+
+// ── Init ──────────────────────────────────────────────────────────────
+(async function () {
+  try {
+    const snapshots = await fetchSnapshots();
+    render(snapshots);
+  } catch (err) {
+    document.getElementById("status").style.display = "none";
+    const errEl = document.getElementById("error");
+    errEl.style.display = "block";
+    errEl.textContent = "Failed to load market data: " + err.message;
+  }
+})();
+</script>
+</body>
+</html>
