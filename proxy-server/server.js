@@ -228,10 +228,16 @@ const server = http.createServer(async (req, res) => {
     return alpacaRequest('GET', `/v1/trading/accounts/${accountId}/limits`, null, res);
   }
 
+  // GET /api/v1/account/trading — Trading account details (buying_power, cash, etc.)
+  if (pathname === '/api/v1/account/trading' && method === 'GET') {
+    if (!accountId) return sendError(res, 400, 'X-Account-Id header is required');
+    return alpacaRequest('GET', `/v1/trading/accounts/${accountId}/account`, null, res);
+  }
+
   // GET /api/v1/account
   if (pathname === '/api/v1/account' && method === 'GET') {
     if (!accountId) return sendError(res, 400, 'X-Account-Id header is required');
-    return alpacaRequest('GET', `/v1/trading/accounts/${accountId}/account`, null, res);
+    return alpacaRequest('GET', `/v1/accounts/${accountId}`, null, res);
   }
 
   // --- Position endpoints ---
@@ -341,6 +347,7 @@ server.listen(PORT, () => {
   console.log('  DELETE /api/v1/orders              — Cancel all orders');
   console.log('  POST   /api/v1/orders/estimate     — Estimate order');
   console.log('  GET    /api/v1/account             — Account details');
+  console.log('  GET    /api/v1/account/trading     — Trading account (buying power, cash)');
   console.log('  GET    /api/v1/account/trading-limits — Trading limits');
   console.log('  GET    /api/v1/positions            — List positions');
   console.log('  GET    /api/v1/positions/:symbol    — Get position');
