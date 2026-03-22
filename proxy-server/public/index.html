@@ -12,6 +12,9 @@
     .top-bar { display: flex; justify-content: space-between; align-items: center; padding: 12px 20px; background: #161b22; border-bottom: 1px solid #30363d; position: sticky; top: 0; z-index: 100; }
     .buying-power { font-size: 14px; color: #8b949e; }
     .buying-power .value { color: #58a6ff; font-weight: 600; margin-left: 4px; }
+    .bp-section { display: flex; align-items: center; gap: 10px; }
+    .get-bp-btn { padding: 5px 12px; background: #30363d; border: 1px solid #484f58; border-radius: 6px; color: #c9d1d9; font-size: 12px; font-weight: 500; cursor: pointer; transition: background 0.2s; }
+    .get-bp-btn:hover { background: #484f58; }
     .track-orders-btn { padding: 8px 16px; background: #1f6feb; border: none; border-radius: 6px; color: #fff; font-size: 13px; font-weight: 600; cursor: pointer; transition: background 0.2s; }
     .track-orders-btn:hover { background: #388bfd; }
 
@@ -71,7 +74,10 @@
 </head>
 <body>
   <div class="top-bar">
-    <div class="buying-power">Buying Power: <span class="value" id="buying-power-value">—</span></div>
+    <div class="bp-section">
+      <div class="buying-power">Buying Power: <span class="value" id="buying-power-value">—</span></div>
+      <button class="get-bp-btn" id="get-bp-btn">Get Buying Power</button>
+    </div>
     <button class="track-orders-btn" id="track-orders-btn">Track Orders</button>
   </div>
 
@@ -191,22 +197,22 @@
     const accountIdInput = document.getElementById('accountId');
     const buyingPowerEl = document.getElementById('buying-power-value');
 
-    // --- Buying Power: auto-fetch when account ID looks valid ---
-    let bpDebounce = null;
-    accountIdInput.addEventListener('input', () => {
+    // --- Buying Power: fetch on button click ---
+    document.getElementById('get-bp-btn').addEventListener('click', () => {
       const id = accountIdInput.value.trim();
-      if (bpDebounce) clearTimeout(bpDebounce);
       if (!id || id.length < 30) {
-        buyingPowerEl.textContent = '—';
+        buyingPowerEl.textContent = 'Enter Account ID';
+        buyingPowerEl.style.color = '#d29922';
         return;
       }
-      bpDebounce = setTimeout(() => fetchBuyingPower(id), 500);
+      buyingPowerEl.style.color = '';
+      fetchBuyingPower(id);
     });
 
     async function fetchBuyingPower(accountId) {
       buyingPowerEl.textContent = '...';
       try {
-        const res = await fetch('/api/v1/account', {
+        const res = await fetch('/api/v1/account/trading', {
           headers: { 'X-Account-Id': accountId },
         });
         if (!res.ok) { buyingPowerEl.textContent = '—'; return; }
