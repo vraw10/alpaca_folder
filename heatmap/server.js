@@ -3,7 +3,7 @@ const https = require("https");
 const fs = require("fs");
 const path = require("path");
 
-const PORT = 3001;
+const PORT = 3003;
 const ALPACA_DATA_URL = "https://data.sandbox.alpaca.markets";
 const ALPACA_TOKEN_URL =
   "https://authx.sandbox.alpaca.markets/v1/oauth2/token";
